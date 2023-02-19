@@ -7,7 +7,7 @@ Currently only implements a 5x5 font **(size multiplier and/or specifier are WIP
 Work for basic font formats support is expected, too, but there's no ETA.
 
 # Cool stuff
-This primitively implements one of my very basic ideas (transforms) which is a function **(currently takes current character and it's index, returns point)** which allows for easy text manipulation. This may **(very likely will)** be extended to implement stuff such as rotations, too.
+This primitively implements one of my very basic ideas (transforms) which is a function **(currently takes cursor, whole input length and progression (character index), returns point)** which allows for easy text manipulation. This may **(very likely will)** be extended to implement stuff such as rotations, too.
 
 ## Theoretical scenario
 Say I wanted to expose only vowels in a word. Instead of hacking the implementation with multiple calls to a text rendering API, I can simply pass a transformer that automatically does my intended function.
@@ -19,10 +19,13 @@ Say I wanted to expose only vowels in a word. Instead of hacking the implementat
 Sine-wave transform + width-wrapping on alphabet + numbers + special characters:
 ```c
 // gdt is an example local pointer to delta time, not offerred by the API
-static SDLText_Point sine_transform(char c, unsigned i) {
-  (void)c;
+static SDLText_Point sine_transform(const unsigned char *cursor,
+                                    unsigned in_len, unsigned i) {
+  (void)cursor;
+  (void)in_len;
 
-  return (SDLText_Point){.x = 0, .y = (int)(sinf((*gdt) * 10 + (float)i) * 2.f)};
+  return (SDLText_Point){.x = (int)((*gdt) * 20) % (WIDTH - 10),
+                         .y = (int)(sinf((*gdt) * 10 + (float)i) * 2.f)};
 }
 
 
@@ -35,9 +38,9 @@ static SDLText_Point sine_transform(char c, unsigned i) {
         "abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqr"
         "stuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz",
         &n, sine_transform);
-
-    if (p) SDL_RenderDrawPoints(mder.renderer, (const SDL_Point *)p, n);
+     if (p) SDL_RenderDrawPoints(mder.renderer, (const SDL_Point *)p, n);
     free(p);
+
 ``` 
 
 ![](static/sine.gif)
@@ -47,12 +50,12 @@ static SDLText_Point sine_transform(char c, unsigned i) {
 
 Rotating circle transform:
 ```c
-#define UPPER_BOUND (unsigned)(('l' + 1) - 'a')
-#define DEGS 360 / UPPER_BOUND
-#define RADIUS 40
 // gdt is an example local pointer to delta time, not offerred by the API
-static SDLText_Point rotating_circle_transform(char c, unsigned i) {
-  (void)c;
+#define DEGS(x) 360 / (x)
+#define RADIUS 40
+static SDLText_Point rotating_circle_transform(const unsigned char *cursor,
+                                               unsigned text_len, unsigned i) {
+  (void)cursor;
 
   unsigned offset;
   float rot;
@@ -72,19 +75,21 @@ static SDLText_Point rotating_circle_transform(char c, unsigned i) {
   p.x = p.y = 0;
   p.x -= offset;
 
-  rot = fmodf(((DEGS * (float)i) + (*gdt) * 100), 360.f);
+  rot = fmodf(((DEGS(text_len) * (float)i) + (*gdt) * 100), 360.f);
 
-	// 57.2958 ~= 360/pi/2
   p.x += (int)(sinf(rot / 57.2958f) * rad);
   p.y -= (int)(cosf(rot / 57.2958f) * rad);
 
   return p;
 }
 
-	p = sdltext_compile_text_ex((SDLText_Point){.x = (WIDTH / 2), .y =
-     (HEIGHT / 2)}, "abcdefghijkl", &n, rotating_circle_transform);
-	if (p) SDL_RenderDrawPoints(mder.renderer, (const SDL_Point *)p, n);
-	free(p);
+
+    p = sdltext_compile_text_ex(
+        (SDLText_Point){.x = (WIDTH / 2), .y = (HEIGHT / 2)}, "not too fond of israel",
+        &n, rotating_circle_transform);
+    if (p) SDL_RenderDrawPoints(mder.renderer, (const SDL_Point *)p, n);
+    free(p);
+
 ```
 
 ![](static/circle.gif)

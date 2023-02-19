@@ -391,12 +391,16 @@ typedef struct {
 } SDLText_Point;
 
 /// This is a null transformation which doesn't affect the text
-static SDLText_Point sdltext_transform_id(char c, unsigned i) {
-  (void)c;
-  (void)i;
-
+static SDLText_Point sdltext_transform_id(const unsigned char *cursor, unsigned in_len, unsigned i) {
+	(void)cursor;
+	(void)in_len;
+	(void)i;
+	
   return (SDLText_Point){0, 0};
 }
+
+/// The type of any given transform for points
+typedef SDLText_Point (*SDLText_Transform)(const unsigned char *, unsigned, unsigned);
 
 /// TODO: implement text size multipliers
 /// TODO: implement support for alternative fonts
@@ -410,7 +414,7 @@ static void _sdltext_compile_text_impl(SDLText_Point xy,
                                        const unsigned char *text,
                                        unsigned text_len, SDLText_Point *p,
                                        unsigned *n,
-                                       SDLText_Point (*f)(char, unsigned)) {
+																			 SDLText_Transform f) {
   unsigned i, j, k, l;
   number wy;
 
@@ -427,7 +431,7 @@ static void _sdltext_compile_text_impl(SDLText_Point xy,
     px = (SDLTEXT_FONT_SIZE * i) + (SDLTEXT_FONT_SPACING * i);
 
     // Calculate transform offset
-    oxy = f(c, l);
+    oxy = f(&text[l], text_len, l);
 
     // Check if we need to wrap line
     // (be that due to width or newline)
@@ -472,7 +476,7 @@ static void _sdltext_compile_text_impl(SDLText_Point xy,
 static SDLText_Point *
 sdltext_compile_text_ex_u8(SDLText_Point xy, const unsigned char *text,
                            unsigned text_len, unsigned *n,
-                           SDLText_Point (*f)(char, unsigned)) {
+                           SDLText_Transform f) {
   if (_sdltext_gw <= 0)
     return NULL;
 
@@ -506,7 +510,7 @@ static SDLText_Point *sdltext_compile_text_u8(SDLText_Point xy,
 /// on to the ex method as any other byte array.
 static SDLText_Point *
 sdltext_compile_text_ex(SDLText_Point xy, const char *text, unsigned *n,
-                        SDLText_Point (*f)(char, unsigned)) {
+                        SDLText_Transform f) {
   return sdltext_compile_text_ex_u8(xy, (const unsigned char *)text,
                                     strlen(text), n, f);
 }
