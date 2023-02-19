@@ -90,7 +90,9 @@ static SDLText_Point rotating_circle_transform(char c, unsigned i) {
 ![](static/circle.gif)
 
 # Implementation
-You must first call `sdltext_initialize` with width as your argument for text wrapping to work, then you may call `sdltext_compile_text_*` as shown above (or in [the API](sdltext.h)), and then you can do anything with the points. For one, you may draw them in only one call using `SDL_RenderDrawPoints`.
+First, you must `#define` a type named `number`, example: `#define number int`, then, you must include `sdltext.h`, and afterwards it's recommended that you `#undef number`.
+
+Then, you must call `sdltext_initialize` with width as your argument for text wrapping to work, then you may call `sdltext_compile_text_*` as shown above (or in [the API](sdltext.h)), and then you can do anything with the points. For one, you may draw them in only one call using `SDL_RenderDrawPoints`.
 
 # Should I use this?
 Do it at your own risk, I'll probably make many changes to the API eventually, it's meant to just be dropped into a SDL application, and to just work, providing you with benefits through its simplicity, and it'll stay this way. You never really *have* to update this, but you might want to once you see new functionality, but I can't promise backwards compatibility.
