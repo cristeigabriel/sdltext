@@ -4,15 +4,21 @@
 #error "(SDLText) No number type"
 #endif
 
+// TODO: maybe go over the naming of everything again
+
 static int _sdltext_gw = 0;
 
 /// Stores application width for raster text compiler to
 /// do text wrapping.
 static void sdltext_initialize(int w) { _sdltext_gw = w; }
 
+// TODO: address these differently once a proper font system
+// 			is implemented
+
 #define SDLTEXT_FONT_SIZE 5
 #define SDLTEXT_FONT_SPACING 2
 
+/// TODO: support more than ascii
 static const int _sdltext_raster[256][SDLTEXT_FONT_SIZE][SDLTEXT_FONT_SIZE] =
     {['1'] = {{0, 0, 1, 0, 0},
               {0, 1, 1, 0, 0},
@@ -375,11 +381,16 @@ static const int _sdltext_raster[256][SDLTEXT_FONT_SIZE][SDLTEXT_FONT_SIZE] =
               {0, 0, 0, 0, 0},
               {0, 0, 1, 0, 0}}};
 
+/// TODO: this should probably have some sort of
+/// aided aligning/packing rules, or somehow be
+/// replaced, realistically however it's probably
+/// going to be fine in most cases.
 typedef struct {
   number x;
   number y;
 } SDLText_Point;
 
+/// This is a null transformation which doesn't affect the text
 static SDLText_Point sdltext_transform_id(char c, unsigned i) {
   (void)c;
   (void)i;
@@ -387,10 +398,19 @@ static SDLText_Point sdltext_transform_id(char c, unsigned i) {
   return (SDLText_Point){0, 0};
 }
 
-static void sdltext_compile_text(SDLText_Point xy, const unsigned char *text,
-                                 unsigned text_len, SDLText_Point *p,
-                                 unsigned *n,
-                                 SDLText_Point (*f)(char, unsigned)) {
+/// TODO: implement text size multipliers
+/// TODO: implement support for alternative fonts
+/// 			(won't break API since it'll just be handled
+/// 			 as a global state - the current font - like with
+/// 			 other APIs)
+/// TODO: add character transforms and replace the tolower call
+/// 			with a transform, OR, change default raster to remove
+/// 			the need
+static void _sdltext_compile_text_impl(SDLText_Point xy,
+                                       const unsigned char *text,
+                                       unsigned text_len, SDLText_Point *p,
+                                       unsigned *n,
+                                       SDLText_Point (*f)(char, unsigned)) {
   unsigned i, j, k, l;
   number wy;
 
@@ -450,9 +470,9 @@ static void sdltext_compile_text(SDLText_Point xy, const unsigned char *text,
 }
 
 static SDLText_Point *
-sdltext_batch_text_ex_u8(SDLText_Point xy, const unsigned char *text,
-                         unsigned text_len, unsigned *n,
-                         SDLText_Point (*f)(char, unsigned)) {
+sdltext_compile_text_ex_u8(SDLText_Point xy, const unsigned char *text,
+                           unsigned text_len, unsigned *n,
+                           SDLText_Point (*f)(char, unsigned)) {
   if (_sdltext_gw <= 0)
     return NULL;
 
@@ -463,34 +483,37 @@ sdltext_batch_text_ex_u8(SDLText_Point xy, const unsigned char *text,
 
   SDLText_Point *p;
 
+  // Preallocates maximium capacity
   p = malloc((text_len * (SDLTEXT_FONT_SIZE * SDLTEXT_FONT_SIZE)) *
              (sizeof *p));
   if (NULL == p)
     return NULL;
 
-  // Compile points and batch them into one single draw call
-  sdltext_compile_text(xy, text, text_len, p, n, f);
+  // Compile points into one single array of points
+  _sdltext_compile_text_impl(xy, text, text_len, p, n, f);
+
   return p;
 }
 
-static SDLText_Point *sdltext_batch_text_u8(SDLText_Point xy,
-                                            const unsigned char *text,
-                                            unsigned text_len, unsigned *n) {
-  return sdltext_batch_text_ex_u8(xy, text, text_len, n, sdltext_transform_id);
+static SDLText_Point *sdltext_compile_text_u8(SDLText_Point xy,
+                                              const unsigned char *text,
+                                              unsigned text_len, unsigned *n) {
+  return sdltext_compile_text_ex_u8(xy, text, text_len, n,
+                                    sdltext_transform_id);
 }
 
 /// Expects sentinel character '\0' at the end of the string, as it is passed
 /// on to the ex method as any other byte array.
 static SDLText_Point *
-sdltext_batch_text_ex(SDLText_Point xy, const char *text, unsigned *n,
-                      SDLText_Point (*f)(char, unsigned)) {
-  return sdltext_batch_text_ex_u8(xy, (const unsigned char *)text, strlen(text),
-                                  n, f);
+sdltext_compile_text_ex(SDLText_Point xy, const char *text, unsigned *n,
+                        SDLText_Point (*f)(char, unsigned)) {
+  return sdltext_compile_text_ex_u8(xy, (const unsigned char *)text,
+                                    strlen(text), n, f);
 }
 
 /// Expects sentinel character '\0' at the end of the string, as it is passed
 /// on to the method that treats it as any other byte array.
-static SDLText_Point *sdltext_batch_text(SDLText_Point xy, const char *text,
-                                         unsigned *n) {
-  return sdltext_batch_text_ex(xy, text, n, sdltext_transform_id);
+static SDLText_Point *sdltext_compile_text(SDLText_Point xy, const char *text,
+                                           unsigned *n) {
+  return sdltext_compile_text_ex(xy, text, n, sdltext_transform_id);
 }
